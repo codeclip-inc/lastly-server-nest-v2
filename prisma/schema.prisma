@@ -1,0 +1,354 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ApproveStatus {
+  PENDING
+  APPROVE
+  DENY
+}
+
+enum PayStatus {
+  REQUESTED
+  APPROVED
+  EXPIRED
+  REFUNDED
+}
+
+enum ReservationStatus {
+  PENDING
+  REQUESTED
+  APPROVED
+  REJECTED
+  PICKEDUP
+  CANCELED
+  REFUNDED
+}
+
+enum PaymentType {
+  KAKAO
+  TOSS
+  TOSS_PAYMENTS
+  NICEPAY
+}
+
+enum RefundInitiator {
+  OWNER
+  USER
+}
+
+enum LoginProvider {
+  KAKAO
+  APPLE
+  GOOGLE
+}
+
+model S3UploadHistory {
+  id BigInt @id @default(autoincrement())
+  userId BigInt @map("user_id")
+  key String @unique
+  createDate DateTime @map("create_date")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("s3_upload_histories")
+}
+
+model AuthHistory {
+  id BigInt @id @default(autoincrement())
+  phoneNumber String @map("phone_number")
+  code String @map("code")
+  createDate DateTime @map("create_date")
+}
+
+model User {
+  id           BigInt         @id @default(autoincrement())
+  name         String
+  phone        String?        @unique
+  provider     LoginProvider?
+  providerId   String? @map("provider_id")
+  refreshToken String? @map("refresh_token")
+  imagePath    String? @map("image_path")
+
+  createDate DateTime @map("create_date")
+  deleteDate DateTime? @map("delete_date")
+
+  payments            Payment[]
+  productReservations ProductReservation[]
+  lastBagReservations LastBagReservation[]
+  carts               Cart[]
+  workspaces          Workspace[]
+  bookmarks           Bookmark[]
+
+  s3UploadHistorys S3UploadHistory[]
+
+  @@map("users")
+}
+
+model WorkspaceCategory {
+  id BigInt @id @default(autoincrement())
+  name String
+
+  workspaces Workspace[]
+
+  @@map("workspace_categories")
+}
+
+model Workspace {
+  id          BigInt @id @default(autoincrement())
+  categoryId  BigInt? @map("category_id")
+  name        String
+  ownerUserId BigInt @map("owner_user_id")
+
+  address   String
+  latitude  Float
+  longitude Float
+
+  businessRegistrationNum String        @db.VarChar(12) @map("business_registration_num")
+  approveStatus           ApproveStatus @default(APPROVE) @map("approve_status")
+  createDate              DateTime @map("create_date")
+  deleteDate              DateTime? @map("delete_date")
+
+  lastBagReservations LastBagReservation[]
+  productReservations ProductReservation[]
+
+  lastBag          LastBag[]
+  lastBagTemplate  LastBagTemplate?
+  user             User              @relation(fields: [ownerUserId], references: [id])
+  productTemplates ProductTemplate[]
+  products         Product[]
+  images           WorkspaceImage[]
+  carts            Cart[]
+  payments         Payment[]
+  bookmarks        Bookmark[]
+  category         WorkspaceCategory? @relation(fields: [categoryId], references: [id])
+
+  @@map("workspaces")
+}
+
+model WorkspaceImage {
+  id           BigInt   @id @default(autoincrement())
+  workspaceId  BigInt @map("workspace_id")
+  originalName String @map("original_name")
+  key          String
+  createDate   DateTime @map("create_date")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@map("workspace_images")
+}
+
+model ProductTemplate {
+  id            BigInt  @id @default(autoincrement())
+  workspaceId   BigInt @map("workspace_id")
+  name          String  @db.VarChar(20)
+  description   String?
+  originalPrice Int @map("original_price")
+  salePrice     Int @map("sale_price")
+  deleteDate    DateTime? @map("delete_date")
+
+  products  Product[]
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  images ProductTemplateImage[]
+
+  @@map("product_templates")
+}
+
+model ProductTemplateImage {
+  id           BigInt   @id @default(autoincrement())
+  templateId   BigInt @map("template_id")
+  originalName String @map("original_name")
+  key          String
+  createDate   DateTime @map("create_date")
+
+  template ProductTemplate @relation(fields: [templateId], references: [id])
+
+  @@map("product_template_images")
+}
+
+model Product {
+  id            BigInt   @id @default(autoincrement())
+  workspaceId   BigInt @map("workspace_id")
+  name          String   @db.VarChar(20)
+  description   String?
+  originalPrice Int @map("original_price")
+  salePrice     Int @map("sale_price")
+  quantity      Int
+  saleDate      DateTime @db.Date @map("sale_date")
+  refTemplateId BigInt @map("ref_template_id")
+  isClosed      Boolean @default(false) @map("is_closed")
+
+  productTemplate ProductTemplate @relation(fields: [refTemplateId], references: [id])
+  workspace       Workspace       @relation(fields: [workspaceId], references: [id])
+  cartItems       CartItem[]
+  reservations    ReservationProduct[]
+
+  @@map("products")
+}
+
+model Cart {
+  id          BigInt   @id @default(autoincrement())
+  workspaceId BigInt @map("workspace_id")
+  userId      BigInt @map("user_id")
+  createDate  DateTime @map("create_date")
+  isDelete    Boolean  @default(false) @map("is_delete")
+
+  user User @relation(fields: [userId], references: [id])
+
+  workspace Workspace  @relation(fields: [workspaceId], references: [id])
+  cartItems CartItem[]
+
+  @@map("carts")
+}
+
+model CartItem {
+  id        BigInt @id @default(autoincrement())
+  cartId    BigInt @map("cart_id")
+  productId BigInt @map("product_id")
+  quantity  Int
+
+  cart    Cart    @relation(fields: [cartId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
+
+  @@unique([cartId, productId])
+
+  @@map("cart_items")
+}
+
+model ProductReservation {
+  id          BigInt            @id @default(autoincrement())
+  workspaceId BigInt @map("workspace_id")
+  userId      BigInt @map("user_id")
+  createDate  DateTime @map("create_date")
+  verifyCode  String @map("verify_code")
+  paymentId   BigInt            @unique @map("payment_id")
+  status      ReservationStatus
+
+  user      User                 @relation(fields: [userId], references: [id])
+  workspace Workspace            @relation(fields: [workspaceId], references: [id])
+  payment   Payment              @relation(fields: [paymentId], references: [id])
+  products  ReservationProduct[]
+
+  @@map("product_reservations")
+}
+
+model ReservationProduct {
+  id            BigInt @id @default(autoincrement())
+  reservationId BigInt @map("reservation_id")
+  productId     BigInt @map("product_id")
+  name          String
+  quantity      Int
+  amount        Int
+
+  reservation ProductReservation @relation(fields: [reservationId], references: [id])
+  product     Product     @relation(fields: [productId], references: [id])
+
+  @@map("reservation_products")
+}
+
+model Payment {
+  id          BigInt      @id @default(autoincrement())
+  paymentKey  String?     @unique @map("payment_key")
+  workspaceId BigInt @map("workspace_id")
+  amount      Int
+  orderId     String      @unique // Toss: orderNo, Kakao: partner_order_id
+  customerId  BigInt @map("customer_id")
+  createDate  DateTime @map("create_date")
+  approvedAt  DateTime? @map("approved_at")
+  cancledAt   DateTime? @map("cancled_at")
+  status      PayStatus   @default(REQUESTED)
+  paymentType PaymentType
+
+  refund             Refund?
+  customer           User                @relation(fields: [customerId], references: [id])
+  workspace          Workspace           @relation(fields: [workspaceId], references: [id])
+  productReservation        ProductReservation?
+  lastBagReservation LastBagReservation?
+
+  @@map("payments")
+}
+
+model Refund {
+  id        BigInt          @id @default(autoincrement())
+  paymentId BigInt          @unique
+  reason    String
+  date      DateTime
+  initiator RefundInitiator
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@map("refunds")
+}
+
+model Bookmark {
+  id          BigInt @id @default(autoincrement())
+  userId      BigInt
+  workspaceId BigInt
+
+  user      User      @relation(fields: [userId], references: [id])
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@map("bookmarks")
+}
+
+model LastBagTemplate {
+  id            BigInt   @id @default(autoincrement())
+  workspaceId   BigInt   @unique
+  description   String
+  originalPrice Int
+  salePrice     Int
+  startTime     DateTime @db.Time(0)
+  endTime       DateTime @db.Time(0)
+  quantity      Int?
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+
+  @@map("last_bag_templates")
+}
+
+model LastBag {
+  id            BigInt   @id @default(autoincrement())
+  description   String
+  workspaceId   BigInt
+  originalPrice Int
+  salePrice     Int
+  quantity      Int
+  startTime     DateTime @db.Time(0)
+  endTime       DateTime @db.Time(0)
+  date          DateTime @default(dbgenerated("CURRENT_DATE")) @db.Date
+  isClosed      Boolean @default(false) @map("is_closed")
+
+  workspace    Workspace            @relation(fields: [workspaceId], references: [id])
+  reservations LastBagReservation[]
+
+  @@unique([workspaceId, date])
+
+  @@map("last_bags")
+}
+
+model LastBagReservation {
+  id          BigInt            @id @default(autoincrement())
+  userId      BigInt
+  workspaceId BigInt
+  lastBagId   BigInt
+  quantity    Int
+  amount      Int
+  createDate  DateTime          @db.Date
+  cancelDateTime  DateTime?
+  paymentId   BigInt            @unique
+  verifyCode  String
+  status      ReservationStatus
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  payment   Payment   @relation(fields: [paymentId], references: [id])
+  lastBag   LastBag   @relation(fields: [lastBagId], references: [id])
+
+  @@map("last_bag_reservations")
+}
