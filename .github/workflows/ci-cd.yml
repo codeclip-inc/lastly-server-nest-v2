@@ -1,0 +1,117 @@
+name: CI/CD
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+    branches:
+      - develop
+      - 'release/*'
+  pull_request:
+    types: [closed]
+    branches:
+      - 'release/*'
+
+permissions:
+  contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    if: |
+      github.event_name == 'push' ||
+      (github.event_name == 'pull_request' && github.event.action == 'closed')
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+      - name: Install & Build & Test
+        run: |
+          yarn install --frozen-lockfile
+          yarn build
+          yarn test --ci
+  deploy-staging:
+    runs-on: ubuntu-latest
+    needs: ci
+    if: |
+      github.event_name == 'pull_request' &&
+      github.event.action == 'closed' &&
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.base.ref, 'release/') &&
+      github.event.pull_request.head.ref == 'develop'
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Show PR context (debug)
+        run: |
+          echo "PR base: ${{ github.event.pull_request.base.ref }}"
+          echo "PR head: ${{ github.event.pull_request.head.ref }}"
+          echo "Merged:  ${{ github.event.pull_request.merged }}"
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      
+      - name: Build & Push Staging Image
+        run: |
+          REL='${{ github.event.pull_request.base.ref }}'
+          REL_VER="${REL#release/}"
+
+          echo "Release version  : ${REL_VER}"
+          echo "Docker image tag : release-${REL_VER}"
+
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t junmay6/lastly:release-${REL_VER} \
+            --push .
+  deploy-production:
+    runs-on: ubuntu-latest
+    needs: ci
+    if: |
+      github.event_name == 'push' &&
+      startsWith(github.ref, 'refs/tags/')
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: Ensure tag commit is on main
+        run: |
+          git fetch origin main --depth=1
+          TAG_COMMIT="$(git rev-parse '${{ github.ref }}')"
+          if git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
+            echo "Tag commit is on main."
+          else
+            echo "Tag commit is NOT on main. Abort."
+            exit 1
+          fi
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Build & Push Prod Image
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          PROD_TAG="l${VER}"
+
+          echo "Git tag          : ${GITHUB_REF_NAME}"
+          echo "Docker image tag : ${PROD_TAG}"
+
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            -t junmay6/lastly:${PROD_TAG} \
+            --push .
