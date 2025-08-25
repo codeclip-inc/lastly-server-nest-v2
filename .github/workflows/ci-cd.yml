@@ -73,7 +73,7 @@ jobs:
           echo "Release version  : ${REL_VER}"
           echo "Docker image tag : release-${REL_VER}"
 
-          docker buildx build --platform linux/amd64,linux/arm64 \
+          docker buildx build --platform linux/amd64 \
             -t junmay6/lastly:release-${REL_VER} \
             --push .
       - name: Deploy to Staging EC2
@@ -89,7 +89,7 @@ jobs:
 
             docker pull junmay6/lastly:release-${REL_VER}
             docker run -d --name lastly-staging \
-              --env-file /opt/app/.env.staging \
+              --env-file /opt/app/.env \
               -p 3000:3000 \
               junmay6/lastly:release-${REL_VER}
   deploy-production:
@@ -129,7 +129,7 @@ jobs:
           echo "Git tag          : ${GITHUB_REF_NAME}"
           echo "Docker image tag : ${PROD_TAG}"
 
-          docker buildx build --platform linux/amd64,linux/arm64 \
+          docker buildx build --platform linux/amd64 \
             -t junmay6/lastly:${PROD_TAG} \
             --push .
       - name: Configure AWS credentials
