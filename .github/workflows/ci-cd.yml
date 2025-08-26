@@ -66,8 +66,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Build & Push Staging Image
+        env:
+          REL: ${{ github.event.pull_request.base.ref }}
         run: |
-          REL='${{ github.event.pull_request.base.ref }}'
           REL_VER="${REL#release/}"
 
           echo "Release version  : ${REL_VER}"
@@ -76,6 +77,8 @@ jobs:
           docker buildx build --platform linux/amd64 \
             -t junmay6/lastly:release-${REL_VER} \
             --push .
+          echo "REL_VER=${REL_VER}" >> $GITHUB_ENV
+
       - name: Deploy to Staging EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
