@@ -66,16 +66,36 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       
       - name: Build & Push Staging Image
+        env:
+          REL: ${{ github.event.pull_request.base.ref }}
         run: |
-          REL='${{ github.event.pull_request.base.ref }}'
           REL_VER="${REL#release/}"
 
           echo "Release version  : ${REL_VER}"
           echo "Docker image tag : release-${REL_VER}"
 
-          docker buildx build --platform linux/amd64,linux/arm64 \
+          docker buildx build --platform linux/amd64 \
             -t junmay6/lastly:release-${REL_VER} \
             --push .
+          echo "REL_VER=${REL_VER}" >> $GITHUB_ENV
+
+      - name: Deploy to Staging EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.STAGING_HOST }}
+          username: ${{ secrets.STAGING_USER }}
+          key: ${{ secrets.STAGING_SSH_KEY }}
+          script: |
+            docker stop lastly-staging || true
+            docker rm lastly-staging || true
+            docker rmi junmay6/lastly:release-${{ env.REL_VER }} || true
+
+            docker pull junmay6/lastly:release-${{ env.REL_VER }}
+            docker run -d --name lastly-staging \
+              --env-file /opt/app/.env \
+              -p 3000:3000 \
+              junmay6/lastly:release-${{ env.REL_VER }}
+
   deploy-production:
     runs-on: ubuntu-latest
     needs: ci
@@ -88,7 +108,7 @@ jobs:
         with: { fetch-depth: 0 }
       - name: Ensure tag commit is on main
         run: |
-          git fetch origin main --depth=1
+          git fetch origin main --unshallow
           TAG_COMMIT="$(git rev-parse '${{ github.ref }}')"
           if git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
             echo "Tag commit is on main."
@@ -113,6 +133,31 @@ jobs:
           echo "Git tag          : ${GITHUB_REF_NAME}"
           echo "Docker image tag : ${PROD_TAG}"
 
-          docker buildx build --platform linux/amd64,linux/arm64 \
+          docker buildx build --platform linux/amd64 \
             -t junmay6/lastly:${PROD_TAG} \
             --push .
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ap-northeast-2
+    
+      - name: Update IMAGE_TAG in SSM
+        run: |
+          VER="${GITHUB_REF_NAME#v}"
+          PROD_TAG="l${VER}"
+
+          aws ssm put-parameter \
+            --name /lastly/prod/IMAGE_TAG \
+            --value "${PROD_TAG}" \
+            --type String \
+            --overwrite \
+            --region ap-northeast-2
+
+      - name: Trigger ASG Rolling Update
+        run: |
+          aws autoscaling start-instance-refresh \
+            --auto-scaling-group-name lastly-asg \
+            --preferences '{"MinHealthyPercentage": 50, "InstanceWarmup": 60}' \
+            --region ap-northeast-2
