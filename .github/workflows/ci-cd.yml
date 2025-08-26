@@ -88,13 +88,14 @@ jobs:
           script: |
             docker stop lastly-staging || true
             docker rm lastly-staging || true
-            docker rmi junmay6/lastly:release-${REL_VER} || true
+            docker rmi junmay6/lastly:release-${{ env.REL_VER }} || true
 
-            docker pull junmay6/lastly:release-${REL_VER}
+            docker pull junmay6/lastly:release-${{ env.REL_VER }}
             docker run -d --name lastly-staging \
               --env-file /opt/app/.env \
               -p 3000:3000 \
-              junmay6/lastly:release-${REL_VER}
+              junmay6/lastly:release-${{ env.REL_VER }}
+
   deploy-production:
     runs-on: ubuntu-latest
     needs: ci
