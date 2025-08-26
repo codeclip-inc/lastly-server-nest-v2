@@ -108,7 +108,7 @@ jobs:
         with: { fetch-depth: 0 }
       - name: Ensure tag commit is on main
         run: |
-          git fetch origin main --unshallow
+          git fetch origin main
           TAG_COMMIT="$(git rev-parse '${{ github.ref }}')"
           if git merge-base --is-ancestor "$TAG_COMMIT" origin/main; then
             echo "Tag commit is on main."
