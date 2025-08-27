@@ -93,7 +93,8 @@ jobs:
             docker pull junmay6/lastly:release-${{ env.REL_VER }}
             docker run -d --name lastly-staging \
               --env-file /opt/app/.env \
-              -p 3000:3000 \
+              --network host \
+              -p 3000:3000 \ 
               junmay6/lastly:release-${{ env.REL_VER }}
 
   deploy-production:
