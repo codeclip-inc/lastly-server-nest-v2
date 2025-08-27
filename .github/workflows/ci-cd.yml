@@ -86,15 +86,15 @@ jobs:
           username: ${{ secrets.STAGING_USER }}
           key: ${{ secrets.STAGING_SSH_KEY }}
           script: |
-            docker stop lastly-staging || true
-            docker rm lastly-staging || true
-            docker rmi junmay6/lastly:release-${{ env.REL_VER }} || true
+            sudo docker stop lastly-staging || true
+            sudo docker rm lastly-staging || true
+            sudo docker rmi junmay6/lastly:release-${{ env.REL_VER }} || true
 
-            docker pull junmay6/lastly:release-${{ env.REL_VER }}
-            docker run -d --name lastly-staging \
+            sudo docker pull junmay6/lastly:release-${{ env.REL_VER }}
+            sudo docker run -d --name lastly-staging \
               --env-file /opt/app/.env \
               --network host \
-              -p 3000:3000 \ 
+              -p 3000:3000 \
               junmay6/lastly:release-${{ env.REL_VER }}
 
   deploy-production:
