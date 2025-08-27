@@ -43,9 +43,11 @@ enum RefundInitiator {
 }
 
 enum LoginProvider {
+  PHONE
   KAKAO
   APPLE
   GOOGLE
+  NAVER
 }
 
 model S3UploadHistory {
@@ -70,11 +72,12 @@ model User {
   id           BigInt         @id @default(autoincrement())
   name         String
   phone        String?        @unique
-  provider     LoginProvider?
+  provider     LoginProvider
   providerId   String? @map("provider_id")
   refreshToken String? @map("refresh_token")
   imagePath    String? @map("image_path")
-
+  lastLoginDate DateTime? @map("last_login_date")
+  
   createDate DateTime @map("create_date")
   deleteDate DateTime? @map("delete_date")
 

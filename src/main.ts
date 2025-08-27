@@ -11,20 +11,31 @@ async function bootstrap() {
   const config = new DocumentBuilder()
   .setTitle('LastLy API')
   .setDescription("라스트리 백엔드 서버")
-  .addCookieAuth('accessToken', {
+  .addBearerAuth({
     type: 'http',
-    in: 'cookie',
-    name: 'Access Token',
-  })
-  .addCookieAuth('refreshToken', {
-    type: 'http',
-    in: 'cookie',
-    name: 'Refresh Token',
-  })
+    in: 'header',
+    scheme: 'Bearer',
+    bearerFormat: 'JWT',
+    description: 'JWT 토큰'
+  }, "Authorization")
+  // .addCookieAuth('accessToken', {
+  //   type: 'http',
+  //   in: 'cookie',
+  //   name: 'Access Token',
+  // })
+  // .addCookieAuth('refreshToken', {
+  //   type: 'http',
+  //   in: 'cookie',
+  //   name: 'Refresh Token',
+  // })
   .build();
 
   const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('api', app, document);
+  SwaggerModule.setup('api', app, document, {
+    swaggerOptions: {
+      persistAuthorization: true,
+    },
+  });
 
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
