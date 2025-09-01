@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Post, Req, UseGuards } from '@nestjs/common';
 import { ApiBody, ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService, JwtPayload } from './auth.service';
 import { ConfigService } from '@nestjs/config';
@@ -46,7 +46,6 @@ export class AuthController {
     @Post('phone/login')
     @ApiOperation({ summary: '휴대폰 로그인', description: '휴대폰 번호와 인증 코드를 입력하여 로그인합니다.' })
     @ApiBody({ type: PhoneVerifyDto })
-    @ApiBearerAuth("Authorization")
     @ApiResponse({ status: 201, description: '휴대폰 로그인 성공', type: TokenResponseDto })
     @ApiResponse({ status: 401, description: '인증 코드 불일치' })
     @ApiResponse({ status: 404, description: '존재하지 않는 휴대폰 번호' })
@@ -62,7 +61,6 @@ export class AuthController {
     @Post('phone/signup')
     @ApiOperation({ summary: '휴대폰 회원가입', description: '휴대폰 번호와 인증 코드를 입력하여 회원가입합니다.' })
     @ApiBody({ type: PhoneVerifyDto })
-    @ApiBearerAuth("Authorization")
     @ApiResponse({ status: 201, description: '휴대폰 회원가입 및 로그인 성공', type: TokenResponseDto })
     @ApiResponse({ status: 400, description: '이미 존재하는 휴대폰 번호' })
     @ApiResponse({ status: 401, description: '인증 코드 불일치' })
@@ -78,7 +76,6 @@ export class AuthController {
     @Post('refresh')
     @ApiOperation({ summary: '토큰 갱신', description: 'accessToken이 만료되었을 때 토큰을 갱신합니다.' })
     @ApiBody({ type: RefreshTokenRequestDto })
-    @ApiBearerAuth("Authorization")
     @ApiResponse({ status: 200, description: '토큰 갱신 성공', type: TokenResponseDto })
     @ApiResponse({ status: 401, description: '토큰 갱신 실패' })
     @ApiResponse({ status: 500, description: '서버 오류' })
@@ -87,5 +84,5 @@ export class AuthController {
     ) {
         const tokens: Tokens = await this.authService.refreshToken(dto.refreshToken);
         return tokens;
-    } 
+    }
 }
