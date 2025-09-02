@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>AWS Presigned 업로드 테스트</title>
+</head>
+<body>
+  <h2>AWS Presigned 업로드 테스트</h2>
+
+  <label>Access Token: <input id="token" type="text" size="80"></label><br><br>
+  <input id="fileInput" type="file" accept="image/*">
+  <button onclick="upload()">업로드 시도</button>
+
+  <pre id="log"></pre>
+
+  <script>
+    async function upload() {
+      const log = document.getElementById("log");
+      log.textContent = "";
+
+      const token = document.getElementById("token").value.trim();
+      const file = document.getElementById("fileInput").files[0];
+      if (!token || !file) {
+        log.textContent = "⚠️ 토큰과 파일을 입력하세요.";
+        return;
+      }
+
+      // 1. presigned 요청
+      const body = {
+        byteSize: file.size,
+        format: "image/webp", // 테스트용, 실제로는 변환해서 써야 함
+        originalName: file.name
+      };
+
+      let presigned;
+      try {
+        const res = await fetch("http://localhost:3000/s3/upload/request", {
+          method: "POST",
+          headers: {
+            "Authorization": "Bearer " + token,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(body)
+        });
+        presigned = await res.json();
+        log.textContent += "📥 Presigned 응답:\n" + JSON.stringify(presigned, null, 2) + "\n\n";
+      } catch (err) {
+        log.textContent += "❌ Presigned 요청 실패: " + err + "\n";
+        return;
+      }
+
+      // 2. presigned 응답으로 S3 업로드
+      const formData = new FormData();
+      for (const [k, v] of Object.entries(presigned.fields)) {
+        formData.append(k, v);
+      }
+      formData.append("file", file);
+
+      try {
+        const res = await fetch(presigned.url, {
+          method: "POST",
+          body: formData
+        });
+        if (res.ok) {
+          log.textContent += "✅ 업로드 성공 (status " + res.status + ")\n";
+        } else {
+          log.textContent += "❌ 업로드 실패 (status " + res.status + "): " + (await res.text()) + "\n";
+        }
+      } catch (err) {
+        log.textContent += "❌ 업로드 에러: " + err + "\n";
+      }
+    }
+  </script>
+</body>
+</html>

@@ -43,20 +43,24 @@ enum RefundInitiator {
 }
 
 enum LoginProvider {
+  PHONE
   KAKAO
   APPLE
   GOOGLE
+  NAVER
 }
 
-model S3UploadHistory {
+model S3ImageTmp {
   id BigInt @id @default(autoincrement())
+  format String @map("format")
   userId BigInt @map("user_id")
-  key String @unique
+  path String @map("path")
+  byteSize Int @map("byte_size")
+  originalName String @map("original_name")
   createDate DateTime @map("create_date")
+  isConfirmed Boolean @default(false) @map("is_confirmed")
 
-  user User @relation(fields: [userId], references: [id])
-
-  @@map("s3_upload_histories")
+  @@map("s3_images_tmp")
 }
 
 model AuthHistory {
@@ -64,17 +68,20 @@ model AuthHistory {
   phoneNumber String @map("phone_number")
   code String @map("code")
   createDate DateTime @map("create_date")
+
+  @@map("auth_histories")
 }
 
 model User {
   id           BigInt         @id @default(autoincrement())
   name         String
   phone        String?        @unique
-  provider     LoginProvider?
+  provider     LoginProvider
   providerId   String? @map("provider_id")
   refreshToken String? @map("refresh_token")
   imagePath    String? @map("image_path")
-
+  lastLoginDate DateTime? @map("last_login_date")
+  
   createDate DateTime @map("create_date")
   deleteDate DateTime? @map("delete_date")
 
@@ -84,8 +91,6 @@ model User {
   carts               Cart[]
   workspaces          Workspace[]
   bookmarks           Bookmark[]
-
-  s3UploadHistorys S3UploadHistory[]
 
   @@map("users")
 }
