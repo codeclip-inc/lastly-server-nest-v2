@@ -109,7 +109,7 @@ export class AuthService {
         })
         return this.generateTokens(user);
     }
-    async signupWithPhone(phoneNumber: string, code: string) {
+    async signupWithPhone(phoneNumber: string, code: string, name: string) {
         const user = await this.prisma.user.findFirst({
             where: {
                 phone: phoneNumber,
@@ -141,7 +141,7 @@ export class AuthService {
             data: {
                 phone: phoneNumber,
                 provider: LoginProvider.PHONE,
-                name: phoneNumber,
+                name: name,
                 createDate: getKoreanDate(),
                 lastLoginDate: getKoreanDate(),
             }
