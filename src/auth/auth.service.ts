@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { PrismaService } from 'nestjs-prisma';
+import { PrismaService } from 'src/prisma/prisma.service';
 import { combineDateAndTime, getKoreanDate } from 'src/utils/dateUtils';
 import { LoginProvider, User } from '@prisma/client';               
 import { JwtService } from '@nestjs/jwt';

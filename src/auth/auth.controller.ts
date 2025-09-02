@@ -3,11 +3,11 @@ import { ApiBody, ApiOperation, ApiResponse, ApiTags, ApiBearerAuth } from '@nes
 import { AuthService, JwtPayload } from './auth.service';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
-import { GenerateVerifyCodeDto } from './dots/request/generate-verify-code.dto';
+import { GenerateVerifyCodeDto } from './dtos/request/generate-verify-code.dto';
 import { VerifyCodeResponseDto } from './response/vefiry-code.dto';
-import { TokenResponseDto } from './dots/response/token-response.dto';
-import { PhoneVerifyDto } from './dots/request/phone-verify.dto';
-import { RefreshTokenRequestDto } from './dots/request/refresh-token-request.dto';
+import { TokenResponseDto } from './dtos/response/token-response.dto';
+import { PhoneVerifyDto } from './dtos/request/phone-verify.dto';
+import { RefreshTokenRequestDto } from './dtos/request/refresh-token-request.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 
 interface Tokens {

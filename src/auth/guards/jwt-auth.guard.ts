@@ -1,8 +1,8 @@
 // auth/jwt-auth.guard.ts
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Global, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
-
+@Global()
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
