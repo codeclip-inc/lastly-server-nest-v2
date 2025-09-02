@@ -4,11 +4,12 @@ import { AuthService, JwtPayload } from './auth.service';
 import { ConfigService } from '@nestjs/config';
 import { Request, Response } from 'express';
 import { GenerateVerifyCodeDto } from './dtos/request/generate-verify-code.dto';
-import { VerifyCodeResponseDto } from './response/vefiry-code.dto';
+import { VerifyCodeResponseDto } from './dtos/response/vefiry-code.dto';
 import { TokenResponseDto } from './dtos/response/token-response.dto';
-import { PhoneVerifyDto } from './dtos/request/phone-verify.dto';
+import { PhoneVerifyDto } from './dtos/request/login.dto';
 import { RefreshTokenRequestDto } from './dtos/request/refresh-token-request.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { SignUpDto } from './dtos/request/sign-up.dto';
 
 interface Tokens {
     accessToken: string;
@@ -60,15 +61,15 @@ export class AuthController {
     @HttpCode(201)
     @Post('phone/signup')
     @ApiOperation({ summary: '휴대폰 회원가입', description: '휴대폰 번호와 인증 코드를 입력하여 회원가입합니다.' })
-    @ApiBody({ type: PhoneVerifyDto })
+    @ApiBody({ type: SignUpDto })
     @ApiResponse({ status: 201, description: '휴대폰 회원가입 및 로그인 성공', type: TokenResponseDto })
     @ApiResponse({ status: 400, description: '이미 존재하는 휴대폰 번호' })
     @ApiResponse({ status: 401, description: '인증 코드 불일치' })
     @ApiResponse({ status: 500, description: '서버 오류' })
     async phoneSignup(
-        @Body() dto: PhoneVerifyDto
+        @Body() dto: SignUpDto
     ) {
-        const tokens: Tokens = await this.authService.signupWithPhone(dto.phoneNumber, dto.code);
+        const tokens: Tokens = await this.authService.signupWithPhone(dto.phoneNumber, dto.code, dto.name);
         return tokens;
     }
 
