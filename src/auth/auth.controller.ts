@@ -46,7 +46,7 @@ export class AuthController {
 
     @HttpCode(201)
     @Post('kakao/login')
-    @ApiOperation({ summary: '카카오 로그인', description: '카카오 코드를 입력하여 로그인합니다.' })
+    @ApiOperation({ summary: '카카오 로그인', description: '카카오 엑세스토큰으로 로그인합니다. \n 반환값은 기존 토큰과 같습니다. \n 이름과 이미지는 카카오 기준으로 저장됩니다.' })
     @ApiBody({ type: KakaoLoginDto })
     @ApiResponse({ status: 201, description: '카카오 로그인 성공', type: TokenResponseDto })
     @ApiResponse({ status: 401, description: '카카오 로그인 실패' })
