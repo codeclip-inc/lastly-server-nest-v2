@@ -6,6 +6,7 @@ import { ConfigModule } from '@nestjs/config';
 import { S3Module } from './s3/s3.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { JwtGlobalModule } from './auth/jwt-global.module';
+import { WorkspaceModule } from './workspace/workspace.module';
 @Global()
 @Module({
   imports: [AuthModule,
@@ -16,6 +17,7 @@ import { JwtGlobalModule } from './auth/jwt-global.module';
     S3Module,
     PrismaModule,
     JwtGlobalModule,
+    WorkspaceModule,
   ],
   controllers: [AppController],
   providers: [AppService],
