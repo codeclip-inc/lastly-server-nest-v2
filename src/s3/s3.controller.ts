@@ -32,5 +32,5 @@ export class S3Controller {
         @Req() req: Request & { user: JwtPayload }
     ){
         return this.s3Service.createS3UploadKey(dto, BigInt(req.user.sub));
-    }   
+    }
 }

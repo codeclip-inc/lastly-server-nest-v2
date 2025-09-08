@@ -93,6 +93,7 @@ jobs:
             sudo docker pull junmay6/lastly:release-${{ env.REL_VER }}
             sudo docker run -d --name lastly-staging \
               --env-file /opt/app/.env \
+              --env NODE_ENV=develop \
               --network host \
               -p 3000:3000 \
               junmay6/lastly:release-${{ env.REL_VER }}
