@@ -197,6 +197,7 @@ export class AuthService {
                     provider: LoginProvider.KAKAO,
                     providerId: kakaoUser.id.toString(),
                     name: kakaoUser.kakao_account.profile.nickname || kakaoUser.properties.nickname,
+                    imagePath: kakaoUser.kakao_account.profile.profile_image_url || kakaoUser.properties.profile_image,
                     createDate: getKoreanDate(),
                 }
             })
