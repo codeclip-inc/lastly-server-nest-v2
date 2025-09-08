@@ -3,11 +3,15 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RequestCreateS3UploadKeyDto } from './dtos/request/request-create-s3-upload-key.dto';
 import { randomUUID } from 'crypto';
-import { HeadObjectCommand, S3, S3Client } from '@aws-sdk/client-s3';
+import { CopyObjectCommand, DeleteObjectCommand, HeadObjectCommand, S3, S3Client } from '@aws-sdk/client-s3';
 import { createPresignedPost, PresignedPost } from '@aws-sdk/s3-presigned-post';
 import { getKoreanDate } from 'src/utils/dateUtils';
 import { S3ImageTmp } from '@prisma/client';
-
+export enum S3ImageTmpTableName {
+    WORKSPACE = 'workspace',
+    USER = 'user',
+    LAST_BAG = 'last_bag',
+}
 @Injectable()
 export class S3Service {
     private readonly IS_DEV: boolean;
@@ -87,34 +91,50 @@ export class S3Service {
                 const head = await this.s3.send(
                     new HeadObjectCommand({
                         Bucket: this.configService.get<string>("AWS_S3_BUCKET_NAME")!,
-                        Key: row.path
+                        Key: row.path,
                     })
-
-                )
+                );
                 if (head.ContentLength !== row.byteSize) {
-                    return { row, ok: false as const, reason: 'SIZE_MISMATCH' };
+                    return { row, ok: false as const, reason: "SIZE_MISMATCH" };
                 }
-
+    
                 if (head.ContentType && head.ContentType !== row.format) {
-                    return { row, ok: false as const, reason: 'MIME_MISMATCH' };
+                    return { row, ok: false as const, reason: "MIME_MISMATCH" };
                 }
-                return { row, ok: true as const };
             } catch (error) {
                 console.error(error);
-                throw new InternalServerErrorException('S3 헤더 조회 실패');
+                return { row, ok: false as const, reason: "이미지 검증 실패" };
             }
-        }
+            try {
+
+                const newPath = `${tableName}/${row.path.replace(/^tmp\//, '')}`;
+
+                await this.s3.send(
+                    new CopyObjectCommand({
+                        Bucket: this.configService.get<string>("AWS_S3_BUCKET_NAME")!,
+                        CopySource: `${this.configService.get<string>("AWS_S3_BUCKET_NAME")!}/${row.path}`,
+                        Key: newPath,
+                    })
+                );
+
+                await this.s3.send(
+                    new DeleteObjectCommand({
+                        Bucket: this.configService.get<string>("AWS_S3_BUCKET_NAME")!,
+                        Key: row.path,
+                    })
+                );
+
+                return { row: { ...row, path: newPath }, ok: true as const };
+            } catch (error) {
+                console.error(error);
+                return { row, ok: false as const, reason: "이미지 이동 실패" };
+            }
+        };
+
         const results = await this.mapLimit(rows, 5, confirm);
         const success = results.filter(r => r.ok).map(r => r.row);
         const failed = results.filter(r => !r.ok);
-
-        const imageData = success.map(r => ({
-            userId: r.userId,
-            path: r.path,
-            byteSize: r.byteSize,
-            originalName: r.originalName,
-        }));
-
+        
         return { success, failed };
     }
 
