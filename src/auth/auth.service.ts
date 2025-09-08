@@ -21,7 +21,7 @@ export class AuthService {
     ) {
         this.IS_DEV = this.configService.get<string>("NODE_ENV") === "develop";
     }
-
+    // 일반 전화 로그인 로직
     async sendVerificationCode(phoneNumber: string) {
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const today = getKoreanDate();
@@ -170,5 +170,42 @@ export class AuthService {
         const accessToken = this.jwtService.sign(payload);
         const refreshToken = this.jwtService.sign(payload, { expiresIn: '1d' });
         return { accessToken, refreshToken };
+    }
+
+    async loginWithKakao(accessToken: string) {
+
+        const kakaoUser = await axios.get('https://kapi.kakao.com/v2/user/me', {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                'Content-type': 'application/x-www-form-urlencoded'
+            }
+        }).catch((error) => {
+            console.error(error);
+            throw new BadRequestException('카카오 로그인 실패');
+        }).then((response) => {
+            return response.data;
+        })
+        const user = await this.prisma.user.findFirst({
+            where: {
+                provider: LoginProvider.KAKAO,
+                providerId: kakaoUser.id.toString(),
+            }
+        })
+        if (!user) {
+            const newUser = await this.prisma.user.create({
+                data: {
+                    provider: LoginProvider.KAKAO,
+                    providerId: kakaoUser.id.toString(),
+                    name: kakaoUser.kakao_account.profile.nickname || kakaoUser.properties.nickname,
+                    imagePath: kakaoUser.kakao_account.profile.profile_image_url || kakaoUser.properties.profile_image,
+                    createDate: getKoreanDate(),
+                }
+            })
+            const tokens = this.generateTokens(newUser);
+            return tokens;
+        } else {
+            const tokens = this.generateTokens(user);
+            return tokens;
+        }
     }
 }
