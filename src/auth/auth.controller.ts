@@ -10,6 +10,7 @@ import { PhoneVerifyDto } from './dtos/request/login.dto';
 import { RefreshTokenRequestDto } from './dtos/request/refresh-token-request.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { SignUpDto } from './dtos/request/sign-up.dto';
+import { KakaoLoginDto } from './dtos/request/kakao-login.dto';
 
 interface Tokens {
     accessToken: string;
@@ -42,6 +43,20 @@ export class AuthController {
         return { isUser };
     }
 
+
+    @HttpCode(201)
+    @Post('kakao/login')
+    @ApiOperation({ summary: '카카오 로그인', description: '카카오 코드를 입력하여 로그인합니다.' })
+    @ApiBody({ type: KakaoLoginDto })
+    @ApiResponse({ status: 201, description: '카카오 로그인 성공', type: TokenResponseDto })
+    @ApiResponse({ status: 401, description: '카카오 로그인 실패' })
+    @ApiResponse({ status: 500, description: '서버 오류' })
+    async kakaoLogin(
+        @Body() dto: KakaoLoginDto
+    ) {
+        const tokens: Tokens = await this.authService.loginWithKakao(dto.accessToken);
+        return tokens;
+    }
 
     @HttpCode(201)
     @Post('phone/login')
